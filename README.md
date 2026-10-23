@@ -1,59 +1,42 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Salesboard
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A small sales reporting dashboard built with Laravel 12. It shows revenue, orders, average order value and cancellation rate for a date range, with a monthly chart and breakdowns by category and region. Reports can be filtered, downloaded as CSV (streamed, so large ranges don't use much memory) or as a PDF summary. It is a portfolio project with made-up data.
 
-## About Laravel
+![Dashboard](docs/screenshots/dashboard.png)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## What it does
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Filters:** date range, region, category. Default is the last 12 months.
+- **Numbers:** revenue (completed orders only), order count, average order value, cancelled share.
+- **Charts:** monthly revenue as an SVG bar chart drawn in the Blade template, and bars for category and region. No JavaScript chart library. Months without sales show as empty bars rather than being skipped.
+- **CSV export:** one row per order for the current filters, written in chunks of 1000 rows straight to the response.
+- **PDF export:** a one-page summary of the same numbers (dompdf).
+- **Caching:** the aggregate queries are cached for 10 minutes per filter combination and thrown away as soon as any order is created, changed or deleted.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+On 20,000 seeded orders with MySQL 8.4 the dashboard queries take about 85 ms the first time and 0.3 ms from the cache.
 
-## Learning Laravel
+| Filtered to West / Electronics |
+|---|
+| ![](docs/screenshots/filtered.png) |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Running it
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+composer install
+cp .env.example .env && php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed     # 20,000 demo orders and one user
+php artisan serve
+```
 
-## Laravel Sponsors
+Log in with `admin@example.com` / `password`. SQLite and MySQL both work; the one query that differs between them (grouping by month) is handled in `ReportService`.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Tests
 
-### Premium Partners
+```bash
+php artisan test
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+18 tests: totals and averages, empty ranges, empty months filled in, date range edges, filters, sorting, caching (a repeat request runs no queries, an order change makes the cache stale, expiry after 10 minutes), validation, login, CSV content and streaming over more than one chunk, and the PDF download.
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+For the design reasons, read [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
